@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>トレーニングログ | DEJ6</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: oklch(14% 0.01 250);
+    --surface: oklch(19% 0.015 250);
+    --surface2: oklch(24% 0.015 250);
+    --border: oklch(32% 0.02 250);
+    --accent: oklch(72% 0.18 65);
+    --accent-dim: oklch(72% 0.18 65 / 0.15);
+    --text: oklch(92% 0.01 250);
+    --text-dim: oklch(62% 0.015 250);
+    --green: oklch(70% 0.16 145);
+    --red: oklch(65% 0.18 25);
+    --r: 6px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Noto Sans JP', sans-serif;
+    min-height: 100dvh;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  /* ── NAV ── */
+  .nav {
+    position: sticky; top: 0; z-index: 100;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 16px;
+    height: 52px;
+  }
+  .nav-logo {
+    font-size: 13px; font-weight: 900; letter-spacing: .08em;
+    color: var(--accent);
+    font-family: 'DM Mono', monospace;
+  }
+  .nav-tabs { display: flex; gap: 2px; }
+  .tab-btn {
+    background: none; border: none; cursor: pointer;
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 13px; font-weight: 500;
+    color: var(--text-dim);
+    padding: 6px 14px; border-radius: 20px;
+    transition: all .18s;
+  }
+  .tab-btn.active {
+    background: var(--accent-dim);
+    color: var(--accent);
+  }
+
+  /* ── PAGE ── */
+  .page { display: none; padding: 20px 16px 40px; max-width: 520px; margin: 0 auto; }
+  .page.active { display: block; }
+
+  /* ── SECTION HEADER ── */
+  .section-label {
+    font-size: 10px; font-weight: 700; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--accent);
+    font-family: 'DM Mono', monospace;
+    margin-bottom: 16px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .section-label::after {
+    content: ''; flex: 1; height: 1px; background: var(--border);
+  }
+
+  /* ── FIELD ── */
+  .field { margin-bottom: 18px; }
+  .field label {
+    display: block; font-size: 12px; font-weight: 700;
+    color: var(--text-dim); letter-spacing: .04em;
+    margin-bottom: 6px;
+  }
+  .field input[type="text"] {
+    width: 100%; background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: var(--r);
+    color: var(--text); font-family: 'Noto Sans JP', sans-serif;
+    font-size: 16px; padding: 12px 14px;
+    outline: none; transition: border-color .18s;
+    appearance: none;
+  }
+  .field input[type="text"]:focus {
+    border-color: var(--accent);
+    background: var(--surface2);
+  }
+
+  /* ── EVAL ITEM ── */
+  .eval-item {
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: var(--r);
+    padding: 14px;
+    margin-bottom: 12px;
+    transition: border-color .18s;
+  }
+  .eval-item:focus-within { border-color: oklch(72% 0.18 65 / 0.5); }
+
+  .eval-title {
+    font-size: 14px; font-weight: 700;
+    margin-bottom: 12px; line-height: 1.4;
+  }
+  .eval-num { color: var(--accent); font-family: 'DM Mono', monospace; font-size: 12px; }
+
+  .stars {
+    display: flex; gap: 6px; margin-bottom: 10px;
+  }
+  .star-btn {
+    flex: 1; background: var(--surface2);
+    border: 1.5px solid var(--border);
+    border-radius: 4px;
+    color: var(--text-dim); font-family: 'DM Mono', monospace;
+    font-size: 16px; font-weight: 700;
+    padding: 10px 0;
+    cursor: pointer; transition: all .15s;
+    text-align: center;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .star-btn:active { transform: scale(.94); }
+  .star-btn.sel {
+    background: var(--accent-dim);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .score-label {
+    font-size: 10px; color: var(--text-dim);
+    display: flex; justify-content: space-between;
+    margin-bottom: 10px; padding: 0 2px;
+  }
+
+  .comment-input {
+    width: 100%; background: var(--surface2);
+    border: 1.5px solid var(--border);
+    border-radius: 4px;
+    color: var(--text); font-family: 'Noto Sans JP', sans-serif;
+    font-size: 14px; padding: 9px 11px;
+    outline: none; resize: none;
+    transition: border-color .18s;
+    min-height: 60px;
+  }
+  .comment-input:focus { border-color: var(--accent); }
+  .comment-input::placeholder { color: var(--text-dim); opacity: .5; }
+
+  /* ── SUBMIT ── */
+  .submit-btn {
+    width: 100%; background: var(--accent);
+    border: none; border-radius: var(--r);
+    color: oklch(12% 0.02 65);
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 16px; font-weight: 900;
+    padding: 16px;
+    cursor: pointer;
+    letter-spacing: .04em;
+    margin-top: 8px;
+    transition: opacity .15s, transform .15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .submit-btn:active { opacity: .85; transform: scale(.98); }
+  .submit-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+  /* ── TOAST ── */
+  .toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    background: var(--green); color: oklch(12% 0.02 145);
+    font-size: 14px; font-weight: 700;
+    padding: 12px 24px; border-radius: 99px;
+    opacity: 0; pointer-events: none;
+    transition: opacity .3s;
+    white-space: nowrap; z-index: 200;
+  }
+  .toast.show { opacity: 1; }
+
+  /* ── VIEWER ── */
+  .search-row {
+    display: flex; gap: 8px; margin-bottom: 20px;
+  }
+  .search-row input {
+    flex: 1; background: var(--surface);
+    border: 1.5px solid var(--border); border-radius: var(--r);
+    color: var(--text); font-family: 'DM Mono', monospace;
+    font-size: 16px; padding: 12px 14px;
+    outline: none; transition: border-color .18s;
+  }
+  .search-row input:focus { border-color: var(--accent); }
+  .search-btn {
+    background: var(--accent); border: none; border-radius: var(--r);
+    color: oklch(12% 0.02 65); font-family: 'Noto Sans JP', sans-serif;
+    font-size: 14px; font-weight: 700;
+    padding: 0 18px; cursor: pointer;
+  }
+
+  .stats-bar {
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: var(--r);
+    padding: 14px 16px;
+    margin-bottom: 16px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .stats-name { font-size: 16px; font-weight: 700; }
+  .stats-badge { font-size: 11px; color: var(--text-dim); font-family: 'DM Mono', monospace; margin-top: 2px; }
+  .stats-days {
+    text-align: right;
+  }
+  .stats-days-num {
+    font-size: 28px; font-weight: 900; color: var(--accent);
+    font-family: 'DM Mono', monospace; line-height: 1;
+  }
+  .stats-days-label { font-size: 10px; color: var(--text-dim); margin-top: 2px; }
+
+  .log-entry {
+    border-left: 3px solid var(--border);
+    padding-left: 14px;
+    margin-bottom: 24px;
+  }
+  .log-date {
+    font-size: 11px; color: var(--accent);
+    font-family: 'DM Mono', monospace;
+    margin-bottom: 10px;
+  }
+  .log-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .log-metric {
+    background: var(--surface);
+    border-radius: 4px;
+    padding: 10px 11px;
+  }
+  .log-metric-label {
+    font-size: 10px; color: var(--text-dim); margin-bottom: 4px; line-height: 1.3;
+  }
+  .log-metric-value {
+    font-size: 18px; font-weight: 900;
+    font-family: 'DM Mono', monospace;
+    color: var(--accent);
+  }
+  .log-metric-comment {
+    font-size: 11px; color: var(--text-dim);
+    margin-top: 4px; line-height: 1.4;
+  }
+
+  .empty {
+    text-align: center; padding: 48px 0;
+    color: var(--text-dim); font-size: 14px;
+  }
+  .empty-icon { font-size: 40px; margin-bottom: 12px; opacity: .4; }
+
+  /* ── ALL LIST ── */
+  .all-entry {
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: var(--r);
+    padding: 13px 14px;
+    margin-bottom: 8px;
+    display: flex; align-items: center; justify-content: space-between;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: border-color .15s;
+  }
+  .all-entry:active { border-color: var(--accent); }
+  .all-entry-name { font-size: 14px; font-weight: 700; }
+  .all-entry-badge { font-size: 11px; color: var(--text-dim); font-family: 'DM Mono', monospace; }
+  .all-entry-count { font-size: 20px; font-weight: 900; color: var(--accent); font-family: 'DM Mono', monospace; }
+  .all-entry-count-label { font-size: 9px; color: var(--text-dim); text-align: right; }
+
+  /* ── SCORE BADGE ── */
+  .score-pill {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 26px; height: 26px; border-radius: 50%;
+    font-size: 12px; font-weight: 900;
+    font-family: 'DM Mono', monospace;
+  }
+  .s1 { background: oklch(55% 0.18 25 / 0.2); color: oklch(65% 0.18 25); }
+  .s2 { background: oklch(65% 0.15 50 / 0.2); color: oklch(70% 0.15 50); }
+  .s3 { background: oklch(70% 0.12 80 / 0.2); color: oklch(72% 0.12 80); }
+  .s4 { background: oklch(68% 0.14 140 / 0.2); color: oklch(70% 0.14 140); }
+  .s5 { background: oklch(70% 0.16 145 / 0.2); color: oklch(70% 0.16 145); }
+
+  @media (min-width: 480px) {
+    .log-grid { grid-template-columns: repeat(3, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-logo">DEJ6 / TRAINING</div>
+  <div class="nav-tabs">
+    <button class="tab-btn active" onclick="showPage('input')">入力</button>
+    <button class="tab-btn" onclick="showPage('viewer')">履歴</button>
+  </div>
+</nav>
+
+<!-- ═══════════ INPUT PAGE ═══════════ -->
+<div class="page active" id="page-input">
+
+  <div class="section-label">基本情報</div>
+
+  <div class="field">
+    <label>氏名</label>
+    <input type="text" id="f-name" placeholder="例：山田 太郎" autocomplete="name">
+  </div>
+  <div class="field">
+    <label>Login ID</label>
+    <input type="text" id="f-badge" placeholder="例：yamadataro" autocomplete="off"
+      style="font-family:'DM Mono',monospace; font-size:18px; letter-spacing:.06em;">
+  </div>
+
+  <div class="section-label" style="margin-top:24px;">評価項目</div>
+
+  <div id="eval-items"></div>
+
+  <button class="submit-btn" onclick="submitForm()">送信する</button>
+</div>
+
+<!-- ═══════════ VIEWER PAGE ═══════════ -->
+<div class="page" id="page-viewer">
+
+  <div class="section-label">Login ID 検索</div>
+
+  <div class="search-row">
+    <input type="text" id="search-badge" placeholder="Login IDを入力..."
+      style="font-family:'DM Mono',monospace; font-size:16px; letter-spacing:.06em;"
+      onkeydown="if(event.key==='Enter')doSearch()">
+    <button class="search-btn" onclick="doSearch()">検索</button>
+  </div>
+
+  <div id="viewer-result"></div>
+
+  <div class="section-label" style="margin-top:28px;">全体一覧</div>
+  <div id="all-list"></div>
+</div>
+
+<div class="toast" id="toast">✓ 送信しました</div>
+
+<script>
+// ── EVAL ITEMS CONFIG ──
+const ITEMS = [
+  { id:'understand', label:'説明への理解力', help:'指示・説明を正確に理解できているか' },
+  { id:'interpersonal', label:'対人関係でのリスク', help:'ハラスメント・コンフリクトのリスクはないか' },
+  { id:'safety', label:'安全に作業できているか', help:'安全手順を遵守し、危険行動はないか' },
+  { id:'pick', label:'ピックの習得率', help:'ピック作業の正確性・スピード' },
+  { id:'stow', label:'ストーの習得率', help:'ストウ作業の正確性・スピード' },
+];
+
+const SCORE_LABELS = ['1 低い','','3 普通','','5 高い'];
+
+// ── RENDER EVAL ITEMS ──
+function renderEvalItems() {
+  const container = document.getElementById('eval-items');
+  container.innerHTML = ITEMS.map((item, i) => `
+    <div class="eval-item">
+      <div class="eval-title">
+        <span class="eval-num">${String(i+1).padStart(2,'0')}</span>
+        　${item.label}
+      </div>
+      <div class="stars" id="stars-${item.id}">
+        ${[1,2,3,4,5].map(n => `
+          <button class="star-btn" data-item="${item.id}" data-val="${n}"
+            onclick="setScore('${item.id}',${n})">${n}</button>
+        `).join('')}
+      </div>
+      <div class="score-label">
+        <span>低い</span><span>普通</span><span>高い</span>
+      </div>
+      <textarea class="comment-input" id="comment-${item.id}"
+        placeholder="コメント（任意）" rows="2"></textarea>
+    </div>
+  `).join('');
+}
+
+const scores = {};
+function setScore(itemId, val) {
+  scores[itemId] = val;
+  const btns = document.querySelectorAll(`[data-item="${itemId}"]`);
+  btns.forEach(b => {
+    b.classList.toggle('sel', parseInt(b.dataset.val) <= val);
+  });
+}
+
+// ── SUBMIT ──
+function submitForm() {
+  const name = document.getElementById('f-name').value.trim();
+  const badge = document.getElementById('f-badge').value.trim();
+
+  if (!name || !badge) {
+    alert('氏名とLogin IDを入力してください。'); return;
+  }
+  for (const item of ITEMS) {
+    if (!scores[item.id]) {
+      alert(`「${item.label}」の評価を選択してください。`); return;
+    }
+  }
+
+  const entry = {
+    id: Date.now(),
+    timestamp: new Date().toISOString(),
+    name, badge,
+    evals: ITEMS.map(item => ({
+      id: item.id,
+      label: item.label,
+      score: scores[item.id],
+      comment: document.getElementById('comment-'+item.id).value.trim()
+    }))
+  };
+
+  const all = getAll();
+  all.push(entry);
+  localStorage.setItem('training_log_dej6', JSON.stringify(all));
+
+  showToast('✓ 送信しました');
+  resetForm();
+}
+
+function resetForm() {
+  document.getElementById('f-name').value = '';
+  document.getElementById('f-badge').value = '';
+  Object.keys(scores).forEach(k => delete scores[k]);
+  renderEvalItems();
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+// ── DATA ──
+function getAll() {
+  try { return JSON.parse(localStorage.getItem('training_log_dej6') || '[]'); }
+  catch { return []; }
+}
+
+// ── VIEWER ──
+function doSearch() {
+  const q = document.getElementById('search-badge').value.trim().toLowerCase();
+  const all = getAll();
+  const entries = all.filter(e => e.badge.toLowerCase() === q || e.badge.toLowerCase().includes(q));
+  renderViewer(entries, q);
+}
+
+function renderViewer(entries, query) {
+  const container = document.getElementById('viewer-result');
+  if (!entries.length) {
+    container.innerHTML = `<div class="empty"><div class="empty-icon">📋</div>データがありません</div>`;
+    return;
+  }
+
+  const first = entries[0];
+  const days = entries.length;
+  const avgScores = {};
+  ITEMS.forEach(item => {
+    const vals = entries.map(e => e.evals.find(ev=>ev.id===item.id)?.score||0);
+    avgScores[item.id] = (vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(1);
+  });
+
+  container.innerHTML = `
+    <div class="stats-bar">
+      <div>
+        <div class="stats-name">${esc(first.name)}</div>
+        <div class="stats-badge">Login ID: ${esc(first.badge)}</div>
+      </div>
+      <div class="stats-days">
+        <div class="stats-days-num">${days}</div>
+        <div class="stats-days-label">出勤日数</div>
+      </div>
+    </div>
+
+    <div style="margin-bottom:20px;">
+      <div style="font-size:11px;color:var(--text-dim);margin-bottom:8px;font-family:'DM Mono',monospace;letter-spacing:.06em;">AVG SCORES</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        ${ITEMS.map(item => `
+          <div style="background:var(--surface);border-radius:6px;padding:8px 12px;flex:1;min-width:100px;">
+            <div style="font-size:10px;color:var(--text-dim);margin-bottom:4px;line-height:1.3;">${esc(item.label)}</div>
+            <div style="font-size:22px;font-weight:900;font-family:'DM Mono',monospace;color:var(--accent);">${avgScores[item.id]}</div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+
+    <div style="font-size:11px;color:var(--text-dim);margin-bottom:12px;font-family:'DM Mono',monospace;">LOG ENTRIES (新しい順)</div>
+    ${[...entries].reverse().map((e, i) => `
+      <div class="log-entry">
+        <div class="log-date">
+          #${entries.length - i} &nbsp;·&nbsp; ${formatDate(e.timestamp)}
+        </div>
+        <div class="log-grid">
+          ${e.evals.map(ev => `
+            <div class="log-metric">
+              <div class="log-metric-label">${esc(ev.label)}</div>
+              <div class="log-metric-value">
+                <span class="score-pill s${ev.score}">${ev.score}</span>
+              </div>
+              ${ev.comment ? `<div class="log-metric-comment">${esc(ev.comment)}</div>` : ''}
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `).join('')}
+  `;
+}
+
+function renderAllList() {
+  const all = getAll();
+  const container = document.getElementById('all-list');
+  if (!all.length) {
+    container.innerHTML = `<div class="empty"><div class="empty-icon">📋</div>まだデータがありません</div>`;
+    return;
+  }
+
+  // group by badge
+  const grouped = {};
+  all.forEach(e => {
+    if (!grouped[e.badge]) grouped[e.badge] = { name: e.name, badge: e.badge, count: 0, last: e.timestamp };
+    grouped[e.badge].count++;
+    if (e.timestamp > grouped[e.badge].last) grouped[e.badge].last = e.timestamp;
+  });
+
+  const sorted = Object.values(grouped).sort((a,b) => b.last.localeCompare(a.last));
+
+  container.innerHTML = sorted.map(p => `
+    <div class="all-entry" onclick="quickView('${esc(p.badge)}')">
+      <div>
+        <div class="all-entry-name">${esc(p.name)}</div>
+        <div class="all-entry-badge">Login ID: ${esc(p.badge)}</div>
+      </div>
+      <div>
+        <div class="all-entry-count">${p.count}</div>
+        <div class="all-entry-count-label">出勤日数</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function quickView(badge) {
+  document.getElementById('search-badge').value = badge;
+  doSearch();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ── NAV ──
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  event.target.classList.add('active');
+  if (id === 'viewer') renderAllList();
+}
+
+// ── UTILS ──
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function formatDate(iso) {
+  const d = new Date(iso);
+  return d.toLocaleDateString('ja-JP', { year:'numeric', month:'2-digit', day:'2-digit' })
+    + ' ' + d.toLocaleTimeString('ja-JP', { hour:'2-digit', minute:'2-digit' });
+}
+
+// ── INIT ──
+renderEvalItems();
+</script>
+</body>
+</html>
