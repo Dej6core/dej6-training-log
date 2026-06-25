@@ -347,16 +347,17 @@
 <div class="toast" id="toast">✓ 送信しました</div>
 
 <script>
+// ── GAS バックエンド URL ──
+const GAS_URL = "https://script.google.com/macros/s/AKfycbwluue7KojSgPATdV97FsOSjyaWLn2iOYmuv1W4ebWKsSWXLLwqZnM720y4baTFSj5GZw/exec";
+
 // ── EVAL ITEMS CONFIG ──
 const ITEMS = [
-  { id:'understand', label:'説明への理解力', help:'指示・説明を正確に理解できているか' },
-  { id:'interpersonal', label:'対人関係でのリスク', help:'ハラスメント・コンフリクトのリスクはないか' },
-  { id:'safety', label:'安全に作業できているか', help:'安全手順を遵守し、危険行動はないか' },
-  { id:'pick', label:'ピックの習得率', help:'ピック作業の正確性・スピード' },
-  { id:'stow', label:'ストーの習得率', help:'ストウ作業の正確性・スピード' },
+  { id:'understand',    label:'説明への理解力',         help:'指示・説明を正確に理解できているか' },
+  { id:'interpersonal', label:'対人関係でのリスク',     help:'ハラスメント・コンフリクトのリスクはないか' },
+  { id:'safety',        label:'安全に作業できているか', help:'安全手順を遵守し、危険行動はないか' },
+  { id:'pick',          label:'ピックの習得率',         help:'ピック作業の正確性・スピード' },
+  { id:'stow',          label:'ストーの習得率',         help:'ストウ作業の正確性・スピード' },
 ];
-
-const SCORE_LABELS = ['1 低い','','3 普通','','5 高い'];
 
 // ── RENDER EVAL ITEMS ──
 function renderEvalItems() {
@@ -392,11 +393,11 @@ function setScore(itemId, val) {
 }
 
 // ── SUBMIT ──
-function submitForm() {
-  const name = document.getElementById('f-name').value.trim();
-  const badge = document.getElementById('f-badge').value.trim();
+async function submitForm() {
+  const name    = document.getElementById('f-name').value.trim();
+  const loginId = document.getElementById('f-badge').value.trim();
 
-  if (!name || !badge) {
+  if (!name || !loginId) {
     alert('氏名とLogin IDを入力してください。'); return;
   }
   for (const item of ITEMS) {
@@ -405,24 +406,35 @@ function submitForm() {
     }
   }
 
+  const btn = document.querySelector('.submit-btn');
+  btn.disabled = true;
+  btn.textContent = '送信中...';
+
   const entry = {
-    id: Date.now(),
-    timestamp: new Date().toISOString(),
-    name, badge,
+    name, loginId,
     evals: ITEMS.map(item => ({
-      id: item.id,
-      label: item.label,
-      score: scores[item.id],
+      id:      item.id,
+      label:   item.label,
+      score:   scores[item.id],
       comment: document.getElementById('comment-'+item.id).value.trim()
     }))
   };
 
-  const all = getAll();
-  all.push(entry);
-  localStorage.setItem('training_log_dej6', JSON.stringify(all));
-
-  showToast('✓ 送信しました');
-  resetForm();
+  try {
+    const res = await fetch(GAS_URL, {
+      method: 'POST',
+      body:   JSON.stringify(entry),
+    });
+    const json = await res.json();
+    if (json.error) throw new Error(json.error);
+    showToast('✓ 送信しました');
+    resetForm();
+  } catch(err) {
+    alert('送信エラー: ' + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '送信する';
+  }
 }
 
 function resetForm() {
@@ -439,18 +451,20 @@ function showToast(msg) {
   setTimeout(() => t.classList.remove('show'), 2200);
 }
 
-// ── DATA ──
-function getAll() {
-  try { return JSON.parse(localStorage.getItem('training_log_dej6') || '[]'); }
-  catch { return []; }
-}
-
 // ── VIEWER ──
-function doSearch() {
-  const q = document.getElementById('search-badge').value.trim().toLowerCase();
-  const all = getAll();
-  const entries = all.filter(e => e.badge.toLowerCase() === q || e.badge.toLowerCase().includes(q));
-  renderViewer(entries, q);
+async function doSearch() {
+  const q = document.getElementById('search-badge').value.trim();
+  if (!q) return;
+  const container = document.getElementById('viewer-result');
+  container.innerHTML = `<div class="empty"><div class="empty-icon">⏳</div>読み込み中...</div>`;
+
+  try {
+    const res     = await fetch(`${GAS_URL}?action=getByLogin&loginId=${encodeURIComponent(q)}`);
+    const json    = await res.json();
+    renderViewer(json.entries || [], q);
+  } catch(err) {
+    container.innerHTML = `<div class="empty">取得エラー: ${err.message}</div>`;
+  }
 }
 
 function renderViewer(entries, query) {
@@ -461,10 +475,10 @@ function renderViewer(entries, query) {
   }
 
   const first = entries[0];
-  const days = entries.length;
+  const days  = entries.length;
   const avgScores = {};
   ITEMS.forEach(item => {
-    const vals = entries.map(e => e.evals.find(ev=>ev.id===item.id)?.score||0);
+    const vals = entries.map(e => parseFloat(e.evals.find(ev=>ev.id===item.id)?.score||0));
     avgScores[item.id] = (vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(1);
   });
 
@@ -472,7 +486,7 @@ function renderViewer(entries, query) {
     <div class="stats-bar">
       <div>
         <div class="stats-name">${esc(first.name)}</div>
-        <div class="stats-badge">Login ID: ${esc(first.badge)}</div>
+        <div class="stats-badge">Login ID: ${esc(first.loginId)}</div>
       </div>
       <div class="stats-days">
         <div class="stats-days-num">${days}</div>
@@ -514,40 +528,48 @@ function renderViewer(entries, query) {
   `;
 }
 
-function renderAllList() {
-  const all = getAll();
+async function renderAllList() {
   const container = document.getElementById('all-list');
-  if (!all.length) {
-    container.innerHTML = `<div class="empty"><div class="empty-icon">📋</div>まだデータがありません</div>`;
-    return;
+  container.innerHTML = `<div class="empty"><div class="empty-icon">⏳</div>読み込み中...</div>`;
+
+  try {
+    const res  = await fetch(`${GAS_URL}?action=getAll`);
+    const json = await res.json();
+    const all  = json.entries || [];
+
+    if (!all.length) {
+      container.innerHTML = `<div class="empty"><div class="empty-icon">📋</div>まだデータがありません</div>`;
+      return;
+    }
+
+    const grouped = {};
+    all.forEach(e => {
+      const key = e.loginId;
+      if (!grouped[key]) grouped[key] = { name: e.name, loginId: e.loginId, count: 0, last: e.timestamp };
+      grouped[key].count++;
+      if (e.timestamp > grouped[key].last) grouped[key].last = e.timestamp;
+    });
+
+    const sorted = Object.values(grouped).sort((a,b) => b.last.localeCompare(a.last));
+    container.innerHTML = sorted.map(p => `
+      <div class="all-entry" onclick="quickView('${esc(p.loginId)}')">
+        <div>
+          <div class="all-entry-name">${esc(p.name)}</div>
+          <div class="all-entry-badge">Login ID: ${esc(p.loginId)}</div>
+        </div>
+        <div>
+          <div class="all-entry-count">${p.count}</div>
+          <div class="all-entry-count-label">出勤日数</div>
+        </div>
+      </div>
+    `).join('');
+  } catch(err) {
+    container.innerHTML = `<div class="empty">取得エラー: ${err.message}</div>`;
   }
-
-  // group by badge
-  const grouped = {};
-  all.forEach(e => {
-    if (!grouped[e.badge]) grouped[e.badge] = { name: e.name, badge: e.badge, count: 0, last: e.timestamp };
-    grouped[e.badge].count++;
-    if (e.timestamp > grouped[e.badge].last) grouped[e.badge].last = e.timestamp;
-  });
-
-  const sorted = Object.values(grouped).sort((a,b) => b.last.localeCompare(a.last));
-
-  container.innerHTML = sorted.map(p => `
-    <div class="all-entry" onclick="quickView('${esc(p.badge)}')">
-      <div>
-        <div class="all-entry-name">${esc(p.name)}</div>
-        <div class="all-entry-badge">Login ID: ${esc(p.badge)}</div>
-      </div>
-      <div>
-        <div class="all-entry-count">${p.count}</div>
-        <div class="all-entry-count-label">出勤日数</div>
-      </div>
-    </div>
-  `).join('');
 }
 
-function quickView(badge) {
-  document.getElementById('search-badge').value = badge;
+function quickView(loginId) {
+  document.getElementById('search-badge').value = loginId;
   doSearch();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
