@@ -467,6 +467,65 @@ async function doSearch() {
   }
 }
 
+// ── RADAR CHART ──
+function drawRadar(evals, sz) {
+  sz = sz || 150;
+  const cx = sz/2, cy = sz/2 + 4;
+  const maxR = sz/2 - 26;
+  const N = 5;
+  const angs = Array.from({length:N}, (_,i) => -Math.PI/2 + i * 2*Math.PI/N);
+  const pt = (r, i) => [cx + r*Math.cos(angs[i]), cy + r*Math.sin(angs[i])];
+
+  // Grid (5 levels)
+  let grid = '';
+  for (let lv=1; lv<=5; lv++) {
+    const p = angs.map((_,i) => pt(maxR*lv/5, i));
+    grid += `<polygon points="${p.map(([x,y])=>`${x.toFixed(1)},${y.toFixed(1)}`).join(' ')}"
+      fill="${lv===5?'rgba(224,148,74,0.06)':'none'}" stroke="rgba(255,255,255,0.1)" stroke-width="0.7"/>`;
+  }
+
+  // Axis lines
+  const axes = angs.map((_,i) => {
+    const [x,y] = pt(maxR, i);
+    return `<line x1="${cx.toFixed(1)}" y1="${cy.toFixed(1)}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" stroke="rgba(255,255,255,0.13)" stroke-width="0.8"/>`;
+  }).join('');
+
+  // Data polygon
+  const vals = ITEMS.map(item => {
+    const ev = evals.find(e => e.id === item.id);
+    return Math.max(0, Math.min(5, parseFloat(ev?.score||0)));
+  });
+  const dataPts = angs.map((_,i) => pt(maxR * vals[i]/5, i));
+  const poly = `<polygon points="${dataPts.map(([x,y])=>`${x.toFixed(1)},${y.toFixed(1)}`).join(' ')}"
+    fill="rgba(224,148,74,0.30)" stroke="#e0944a" stroke-width="2" stroke-linejoin="round"/>`;
+
+  // Dots
+  const dots = dataPts.map(([x,y]) =>
+    `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3.5" fill="#e0944a" stroke="#1a1a2e" stroke-width="1.2"/>`
+  ).join('');
+
+  // Score labels near dots
+  const scoreLabels = vals.map((v, i) => {
+    if (!v) return '';
+    const [x, y] = dataPts[i];
+    const ox = x < cx ? -7 : x > cx + 2 ? 7 : 0;
+    const oy = y < cy ? -6 : 6;
+    return `<text x="${(x+ox).toFixed(1)}" y="${(y+oy).toFixed(1)}" text-anchor="middle" font-size="8" fill="#e0944a" font-weight="bold" font-family="monospace">${v}</text>`;
+  }).join('');
+
+  // Axis labels
+  const shorts = ['理解力','対人','安全','ピック','ストー'];
+  const anchors = ['middle','start','start','end','end'];
+  const dys = [-9, 3, 13, 13, 3];
+  const dxs = [0, 5, 4, -4, -5];
+  const labels = angs.map((_,i) => {
+    const [x, y] = pt(maxR + 10, i);
+    return `<text x="${(x+dxs[i]).toFixed(1)}" y="${(y+dys[i]).toFixed(1)}" text-anchor="${anchors[i]}" font-size="9" fill="rgba(255,255,255,0.55)" font-family="'Noto Sans JP',sans-serif">${shorts[i]}</text>`;
+  }).join('');
+
+  return `<svg width="${sz}" height="${sz}" viewBox="0 0 ${sz} ${sz}" style="display:block;flex-shrink:0;">${grid}${axes}${poly}${dots}${scoreLabels}${labels}</svg>`;
+}
+
 function renderViewer(entries, query) {
   const container = document.getElementById('viewer-result');
   if (!entries.length) {
@@ -494,13 +553,14 @@ function renderViewer(entries, query) {
       </div>
     </div>
 
-    <div style="margin-bottom:20px;">
-      <div style="font-size:11px;color:var(--text-dim);margin-bottom:8px;font-family:'DM Mono',monospace;letter-spacing:.06em;">AVG SCORES</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+    <div style="background:var(--surface);border-radius:10px;padding:14px 12px;margin-bottom:20px;display:flex;align-items:center;gap:14px;">
+      ${drawRadar(ITEMS.map(item=>({id:item.id,score:parseFloat(avgScores[item.id])})),145)}
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:10px;color:var(--text-dim);margin-bottom:10px;font-family:'DM Mono',monospace;letter-spacing:.08em;">AVG SCORES</div>
         ${ITEMS.map(item => `
-          <div style="background:var(--surface);border-radius:6px;padding:8px 12px;flex:1;min-width:100px;">
-            <div style="font-size:10px;color:var(--text-dim);margin-bottom:4px;line-height:1.3;">${esc(item.label)}</div>
-            <div style="font-size:22px;font-weight:900;font-family:'DM Mono',monospace;color:var(--accent);">${avgScores[item.id]}</div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
+            <span style="font-size:10px;color:var(--text-dim);line-height:1.3;">${esc(item.label)}</span>
+            <span style="font-size:16px;font-weight:900;font-family:'DM Mono',monospace;color:var(--accent);margin-left:8px;">${avgScores[item.id]}</span>
           </div>
         `).join('')}
       </div>
@@ -512,16 +572,19 @@ function renderViewer(entries, query) {
         <div class="log-date">
           #${entries.length - i} &nbsp;·&nbsp; ${formatDate(e.timestamp)}
         </div>
-        <div class="log-grid">
-          ${e.evals.map(ev => `
-            <div class="log-metric">
-              <div class="log-metric-label">${esc(ev.label)}</div>
-              <div class="log-metric-value">
-                <span class="score-pill s${ev.score}">${ev.score}</span>
+        <div style="display:flex;align-items:flex-start;gap:10px;margin-top:8px;">
+          ${drawRadar(e.evals, 135)}
+          <div style="flex:1;min-width:0;">
+            ${e.evals.map(ev => `
+              <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;min-width:0;">
+                <span class="score-pill s${ev.score}" style="flex-shrink:0;">${ev.score}</span>
+                <div style="min-width:0;">
+                  <div style="font-size:10px;color:var(--text-dim);line-height:1.2;">${esc(ev.label)}</div>
+                  ${ev.comment ? `<div style="font-size:10px;color:var(--text);margin-top:1px;word-break:break-all;">${esc(ev.comment)}</div>` : ''}
+                </div>
               </div>
-              ${ev.comment ? `<div class="log-metric-comment">${esc(ev.comment)}</div>` : ''}
-            </div>
-          `).join('')}
+            `).join('')}
+          </div>
         </div>
       </div>
     `).join('')}
