@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html id="root" lang="ja">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>トレーニングログ | DEJ6</title>
+<title id="page-title">トレーニングログ | DEJ6</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -54,6 +54,21 @@
     padding: 6px 14px; border-radius: 20px;
     transition: all .18s;
   }
+
+  /* ── LANG TOGGLE ── */
+  .lang-btn {
+    background: var(--surface2);
+    border: 1.5px solid var(--border);
+    border-radius: 20px;
+    color: var(--text-dim);
+    font-family: 'DM Mono', monospace;
+    font-size: 11px; font-weight: 700;
+    padding: 4px 11px; cursor: pointer;
+    margin-left: 6px;
+    transition: all .18s;
+    letter-spacing: .06em;
+  }
+  .lang-btn:hover { border-color: var(--accent); color: var(--accent); }
   .tab-btn.active {
     background: var(--accent-dim);
     color: var(--accent);
@@ -298,19 +313,22 @@
 
 <nav class="nav">
   <div class="nav-logo">DEJ6 / TRAINING</div>
-  <div class="nav-tabs">
-    <button class="tab-btn active" onclick="showPage('input')">入力</button>
-    <button class="tab-btn" onclick="showPage('viewer')">履歴</button>
+  <div style="display:flex;align-items:center;gap:2px;">
+    <div class="nav-tabs">
+      <button class="tab-btn active" id="tab-input" onclick="showPage('input')" data-i18n="tabInput">入力</button>
+      <button class="tab-btn" id="tab-viewer" onclick="showPage('viewer')" data-i18n="tabHistory">履歴</button>
+    </div>
+    <button class="lang-btn" id="lang-btn" onclick="toggleLang()">EN</button>
   </div>
 </nav>
 
 <!-- ═══════════ INPUT PAGE ═══════════ -->
 <div class="page active" id="page-input">
 
-  <div class="section-label">基本情報</div>
+  <div class="section-label" data-i18n="sectionBasic">基本情報</div>
 
   <div class="field">
-    <label>氏名</label>
+    <label data-i18n="labelName">氏名</label>
     <input type="text" id="f-name" placeholder="例：山田 太郎" autocomplete="name">
   </div>
   <div class="field">
@@ -319,47 +337,159 @@
       style="font-family:'DM Mono',monospace; font-size:18px; letter-spacing:.06em;">
   </div>
 
-  <div class="section-label" style="margin-top:24px;">評価項目</div>
+  <div class="section-label" style="margin-top:24px;" data-i18n="sectionEval">評価項目</div>
 
   <div id="eval-items"></div>
 
-  <button class="submit-btn" onclick="submitForm()">送信する</button>
+  <button class="submit-btn" id="submit-btn" onclick="submitForm()" data-i18n="submitBtn">送信する</button>
 </div>
 
 <!-- ═══════════ VIEWER PAGE ═══════════ -->
 <div class="page" id="page-viewer">
 
-  <div class="section-label">Login ID 検索</div>
+  <div class="section-label" data-i18n="sectionSearch">Login ID 検索</div>
 
   <div class="search-row">
     <input type="text" id="search-badge" placeholder="Login IDを入力..."
       style="font-family:'DM Mono',monospace; font-size:16px; letter-spacing:.06em;"
       onkeydown="if(event.key==='Enter')doSearch()">
-    <button class="search-btn" onclick="doSearch()">検索</button>
+    <button class="search-btn" id="search-btn" onclick="doSearch()" data-i18n="searchBtn">検索</button>
   </div>
 
   <div id="viewer-result"></div>
 
-  <div class="section-label" style="margin-top:28px;">全体一覧</div>
+  <div class="section-label" style="margin-top:28px;" data-i18n="sectionAll">全体一覧</div>
   <div id="all-list"></div>
 </div>
 
-<div class="toast" id="toast">✓ 送信しました</div>
+<div class="toast" id="toast"></div>
 
 <script>
-// ── GAS バックエンド URL ──
 const GAS_URL = "https://script.google.com/macros/s/AKfycbwluue7KojSgPATdV97FsOSjyaWLn2iOYmuv1W4ebWKsSWXLLwqZnM720y4baTFSj5GZw/exec";
 
-// ── EVAL ITEMS CONFIG ──
-const ITEMS = [
-  { id:'understand',    label:'説明への理解力',         help:'指示・説明を正確に理解できているか' },
-  { id:'interpersonal', label:'対人関係でのリスク',     help:'ハラスメント・コンフリクトのリスクはないか' },
-  { id:'safety',        label:'安全に作業できているか', help:'安全手順を遵守し、危険行動はないか' },
-  { id:'pick',          label:'ピックの習得率',         help:'ピック作業の正確性・スピード' },
-  { id:'stow',          label:'ストーの習得率',         help:'ストウ作業の正確性・スピード' },
-];
+// ── i18n ──
+const I18N = {
+  ja: {
+    title:       'トレーニングログ | DEJ6',
+    tabInput:    '入力',
+    tabHistory:  '履歴',
+    sectionBasic:'基本情報',
+    labelName:   '氏名',
+    phName:      '例：山田 太郎',
+    sectionEval: '評価項目',
+    submitBtn:   '送信する',
+    submitting:  '送信中...',
+    sectionSearch:'Login ID 検索',
+    phSearch:    'Login IDを入力...',
+    searchBtn:   '検索',
+    sectionAll:  '全体一覧',
+    toast:       '✓ 送信しました',
+    errRequired: '氏名とLogin IDを入力してください。',
+    errScore:    l => `「${l}」の評価を選択してください。`,
+    errSubmit:   e => `送信エラー: ${e}`,
+    errFetch:    e => `取得エラー: ${e}`,
+    scoreLow:'低い', scoreMid:'普通', scoreHigh:'高い',
+    commentPh:   'コメント（任意）',
+    loading:     '読み込み中...',
+    noData:      'データがありません',
+    noDataYet:   'まだデータがありません',
+    daysWorked:  '出勤日数',
+    logEntries:  'LOG ENTRIES（新しい順）',
+    avgScores:   'AVG SCORES',
+    radarLabels: ['理解力','対人','安全','ピック','ストー'],
+    langSwitch:  'EN',
+    items: [
+      { id:'understand',    label:'説明への理解力',         help:'指示・説明を正確に理解できているか' },
+      { id:'interpersonal', label:'対人関係でのリスク',     help:'ハラスメント・コンフリクトのリスクはないか' },
+      { id:'safety',        label:'安全に作業できているか', help:'安全手順を遵守し、危険行動はないか' },
+      { id:'pick',          label:'ピックの習得率',         help:'ピック作業の正確性・スピード' },
+      { id:'stow',          label:'ストーの習得率',         help:'ストウ作業の正確性・スピード' },
+    ],
+  },
+  en: {
+    title:       'Training Log | DEJ6',
+    tabInput:    'Log',
+    tabHistory:  'History',
+    sectionBasic:'Basic Info',
+    labelName:   'Name',
+    phName:      'e.g. John Smith',
+    sectionEval: 'Evaluation',
+    submitBtn:   'Submit',
+    submitting:  'Submitting...',
+    sectionSearch:'Search by Login ID',
+    phSearch:    'Enter Login ID...',
+    searchBtn:   'Search',
+    sectionAll:  'All Members',
+    toast:       '✓ Submitted',
+    errRequired: 'Please enter your name and Login ID.',
+    errScore:    l => `Please rate "${l}".`,
+    errSubmit:   e => `Submit error: ${e}`,
+    errFetch:    e => `Error: ${e}`,
+    scoreLow:'Low', scoreMid:'Mid', scoreHigh:'High',
+    commentPh:   'Comment (optional)',
+    loading:     'Loading...',
+    noData:      'No records found',
+    noDataYet:   'No records yet',
+    daysWorked:  'Days',
+    logEntries:  'LOG ENTRIES (newest first)',
+    avgScores:   'AVG SCORES',
+    radarLabels: ['Comprehension','Interpersonal','Safety','Pick','Stow'],
+    langSwitch:  'JA',
+    items: [
+      { id:'understand',    label:'Comprehension',       help:'Understands instructions accurately' },
+      { id:'interpersonal', label:'Interpersonal Risk',  help:'No harassment or conflict risk' },
+      { id:'safety',        label:'Safe Work Habits',    help:'Follows safety procedures' },
+      { id:'pick',          label:'Pick Skill',          help:'Pick accuracy & speed' },
+      { id:'stow',          label:'Stow Skill',          help:'Stow accuracy & speed' },
+    ],
+  }
+};
 
-// ── RENDER EVAL ITEMS ──
+let lang = localStorage.getItem('dej6-lang') || 'ja';
+let T    = I18N[lang];
+let ITEMS = T.items;
+
+function toggleLang() {
+  lang  = lang === 'ja' ? 'en' : 'ja';
+  localStorage.setItem('dej6-lang', lang);
+  applyLang();
+}
+
+function applyLang() {
+  T     = I18N[lang];
+  ITEMS = T.items;
+
+  // html lang attr & title
+  document.getElementById('root').lang = lang;
+  document.getElementById('page-title').textContent = T.title;
+
+  // data-i18n static elements
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.dataset.i18n;
+    if (T[key] !== undefined) el.textContent = T[key];
+  });
+
+  // placeholders
+  document.getElementById('f-name').placeholder    = T.phName;
+  document.getElementById('search-badge').placeholder = T.phSearch;
+
+  // lang-btn shows the OTHER language
+  document.getElementById('lang-btn').textContent = T.langSwitch;
+
+  // re-render dynamic content
+  renderEvalItems();
+  const result = document.getElementById('viewer-result');
+  if (result && result.innerHTML.trim() && !result.innerHTML.includes('empty')) {
+    const q = document.getElementById('search-badge').value.trim();
+    if (q) doSearch();
+  }
+  const allList = document.getElementById('all-list');
+  if (allList && allList.innerHTML.trim() && !allList.innerHTML.includes('empty')) {
+    renderAllList();
+  }
+}
+
+// ── EVAL ITEMS ──
 function renderEvalItems() {
   const container = document.getElementById('eval-items');
   container.innerHTML = ITEMS.map((item, i) => `
@@ -375,19 +505,24 @@ function renderEvalItems() {
         `).join('')}
       </div>
       <div class="score-label">
-        <span>低い</span><span>普通</span><span>高い</span>
+        <span>${T.scoreLow}</span><span>${T.scoreMid}</span><span>${T.scoreHigh}</span>
       </div>
       <textarea class="comment-input" id="comment-${item.id}"
-        placeholder="コメント（任意）" rows="2"></textarea>
+        placeholder="${T.commentPh}" rows="2"></textarea>
     </div>
   `).join('');
+  // restore scores
+  Object.entries(scores).forEach(([id, val]) => {
+    document.querySelectorAll(`[data-item="${id}"]`).forEach(b => {
+      b.classList.toggle('sel', parseInt(b.dataset.val) <= val);
+    });
+  });
 }
 
 const scores = {};
 function setScore(itemId, val) {
   scores[itemId] = val;
-  const btns = document.querySelectorAll(`[data-item="${itemId}"]`);
-  btns.forEach(b => {
+  document.querySelectorAll(`[data-item="${itemId}"]`).forEach(b => {
     b.classList.toggle('sel', parseInt(b.dataset.val) <= val);
   });
 }
@@ -396,19 +531,14 @@ function setScore(itemId, val) {
 async function submitForm() {
   const name    = document.getElementById('f-name').value.trim();
   const loginId = document.getElementById('f-badge').value.trim();
-
-  if (!name || !loginId) {
-    alert('氏名とLogin IDを入力してください。'); return;
-  }
+  if (!name || !loginId) { alert(T.errRequired); return; }
   for (const item of ITEMS) {
-    if (!scores[item.id]) {
-      alert(`「${item.label}」の評価を選択してください。`); return;
-    }
+    if (!scores[item.id]) { alert(T.errScore(item.label)); return; }
   }
 
-  const btn = document.querySelector('.submit-btn');
+  const btn = document.getElementById('submit-btn');
   btn.disabled = true;
-  btn.textContent = '送信中...';
+  btn.textContent = T.submitting;
 
   const entry = {
     name, loginId,
@@ -421,24 +551,21 @@ async function submitForm() {
   };
 
   try {
-    const res = await fetch(GAS_URL, {
-      method: 'POST',
-      body:   JSON.stringify(entry),
-    });
+    const res  = await fetch(GAS_URL, { method:'POST', body: JSON.stringify(entry) });
     const json = await res.json();
     if (json.error) throw new Error(json.error);
-    showToast('✓ 送信しました');
+    showToast(T.toast);
     resetForm();
   } catch(err) {
-    alert('送信エラー: ' + err.message);
+    alert(T.errSubmit(err.message));
   } finally {
     btn.disabled = false;
-    btn.textContent = '送信する';
+    btn.textContent = T.submitBtn;
   }
 }
 
 function resetForm() {
-  document.getElementById('f-name').value = '';
+  document.getElementById('f-name').value  = '';
   document.getElementById('f-badge').value = '';
   Object.keys(scores).forEach(k => delete scores[k]);
   renderEvalItems();
@@ -456,14 +583,13 @@ async function doSearch() {
   const q = document.getElementById('search-badge').value.trim();
   if (!q) return;
   const container = document.getElementById('viewer-result');
-  container.innerHTML = `<div class="empty"><div class="empty-icon">⏳</div>読み込み中...</div>`;
-
+  container.innerHTML = `<div class="empty"><div class="empty-icon">⏳</div>${T.loading}</div>`;
   try {
-    const res     = await fetch(`${GAS_URL}?action=getByLogin&loginId=${encodeURIComponent(q)}`);
-    const json    = await res.json();
+    const res  = await fetch(`${GAS_URL}?action=getByLogin&loginId=${encodeURIComponent(q)}`);
+    const json = await res.json();
     renderViewer(json.entries || [], q);
   } catch(err) {
-    container.innerHTML = `<div class="empty">取得エラー: ${err.message}</div>`;
+    container.innerHTML = `<div class="empty">${T.errFetch(err.message)}</div>`;
   }
 }
 
@@ -476,7 +602,6 @@ function drawRadar(evals, sz) {
   const angs = Array.from({length:N}, (_,i) => -Math.PI/2 + i * 2*Math.PI/N);
   const pt = (r, i) => [cx + r*Math.cos(angs[i]), cy + r*Math.sin(angs[i])];
 
-  // Grid (5 levels)
   let grid = '';
   for (let lv=1; lv<=5; lv++) {
     const p = angs.map((_,i) => pt(maxR*lv/5, i));
@@ -484,13 +609,11 @@ function drawRadar(evals, sz) {
       fill="${lv===5?'rgba(224,148,74,0.06)':'none'}" stroke="rgba(255,255,255,0.1)" stroke-width="0.7"/>`;
   }
 
-  // Axis lines
   const axes = angs.map((_,i) => {
     const [x,y] = pt(maxR, i);
     return `<line x1="${cx.toFixed(1)}" y1="${cy.toFixed(1)}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" stroke="rgba(255,255,255,0.13)" stroke-width="0.8"/>`;
   }).join('');
 
-  // Data polygon
   const vals = ITEMS.map(item => {
     const ev = evals.find(e => e.id === item.id);
     return Math.max(0, Math.min(5, parseFloat(ev?.score||0)));
@@ -499,12 +622,10 @@ function drawRadar(evals, sz) {
   const poly = `<polygon points="${dataPts.map(([x,y])=>`${x.toFixed(1)},${y.toFixed(1)}`).join(' ')}"
     fill="rgba(224,148,74,0.30)" stroke="#e0944a" stroke-width="2" stroke-linejoin="round"/>`;
 
-  // Dots
   const dots = dataPts.map(([x,y]) =>
     `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3.5" fill="#e0944a" stroke="#1a1a2e" stroke-width="1.2"/>`
   ).join('');
 
-  // Score labels near dots
   const scoreLabels = vals.map((v, i) => {
     if (!v) return '';
     const [x, y] = dataPts[i];
@@ -513,12 +634,11 @@ function drawRadar(evals, sz) {
     return `<text x="${(x+ox).toFixed(1)}" y="${(y+oy).toFixed(1)}" text-anchor="middle" font-size="8" fill="#e0944a" font-weight="bold" font-family="monospace">${v}</text>`;
   }).join('');
 
-  // Axis labels
-  const shorts = ['理解力','対人','安全','ピック','ストー'];
+  const shorts  = T.radarLabels;
   const anchors = ['middle','start','start','end','end'];
-  const dys = [-9, 3, 13, 13, 3];
-  const dxs = [0, 5, 4, -4, -5];
-  const labels = angs.map((_,i) => {
+  const dys     = [-9, 3, 13, 13, 3];
+  const dxs     = [0, 5, 4, -4, -5];
+  const labels  = angs.map((_,i) => {
     const [x, y] = pt(maxR + 10, i);
     return `<text x="${(x+dxs[i]).toFixed(1)}" y="${(y+dys[i]).toFixed(1)}" text-anchor="${anchors[i]}" font-size="9" fill="rgba(255,255,255,0.55)" font-family="'Noto Sans JP',sans-serif">${shorts[i]}</text>`;
   }).join('');
@@ -529,7 +649,7 @@ function drawRadar(evals, sz) {
 function renderViewer(entries, query) {
   const container = document.getElementById('viewer-result');
   if (!entries.length) {
-    container.innerHTML = `<div class="empty"><div class="empty-icon">📋</div>データがありません</div>`;
+    container.innerHTML = `<div class="empty"><div class="empty-icon">📋</div>${T.noData}</div>`;
     return;
   }
 
@@ -549,14 +669,14 @@ function renderViewer(entries, query) {
       </div>
       <div class="stats-days">
         <div class="stats-days-num">${days}</div>
-        <div class="stats-days-label">出勤日数</div>
+        <div class="stats-days-label">${T.daysWorked}</div>
       </div>
     </div>
 
     <div style="background:var(--surface);border-radius:10px;padding:14px 12px;margin-bottom:20px;display:flex;align-items:center;gap:14px;">
       ${drawRadar(ITEMS.map(item=>({id:item.id,score:parseFloat(avgScores[item.id])})),145)}
       <div style="flex:1;min-width:0;">
-        <div style="font-size:10px;color:var(--text-dim);margin-bottom:10px;font-family:'DM Mono',monospace;letter-spacing:.08em;">AVG SCORES</div>
+        <div style="font-size:10px;color:var(--text-dim);margin-bottom:10px;font-family:'DM Mono',monospace;letter-spacing:.08em;">${T.avgScores}</div>
         ${ITEMS.map(item => `
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
             <span style="font-size:10px;color:var(--text-dim);line-height:1.3;">${esc(item.label)}</span>
@@ -566,7 +686,7 @@ function renderViewer(entries, query) {
       </div>
     </div>
 
-    <div style="font-size:11px;color:var(--text-dim);margin-bottom:12px;font-family:'DM Mono',monospace;">LOG ENTRIES (新しい順)</div>
+    <div style="font-size:11px;color:var(--text-dim);margin-bottom:12px;font-family:'DM Mono',monospace;">${T.logEntries}</div>
     ${[...entries].reverse().map((e, i) => `
       <div class="log-entry">
         <div class="log-date">
@@ -593,15 +713,14 @@ function renderViewer(entries, query) {
 
 async function renderAllList() {
   const container = document.getElementById('all-list');
-  container.innerHTML = `<div class="empty"><div class="empty-icon">⏳</div>読み込み中...</div>`;
-
+  container.innerHTML = `<div class="empty"><div class="empty-icon">⏳</div>${T.loading}</div>`;
   try {
     const res  = await fetch(`${GAS_URL}?action=getAll`);
     const json = await res.json();
     const all  = json.entries || [];
 
     if (!all.length) {
-      container.innerHTML = `<div class="empty"><div class="empty-icon">📋</div>まだデータがありません</div>`;
+      container.innerHTML = `<div class="empty"><div class="empty-icon">📋</div>${T.noDataYet}</div>`;
       return;
     }
 
@@ -622,12 +741,12 @@ async function renderAllList() {
         </div>
         <div>
           <div class="all-entry-count">${p.count}</div>
-          <div class="all-entry-count-label">出勤日数</div>
+          <div class="all-entry-count-label">${T.daysWorked}</div>
         </div>
       </div>
     `).join('');
   } catch(err) {
-    container.innerHTML = `<div class="empty">取得エラー: ${err.message}</div>`;
+    container.innerHTML = `<div class="empty">${T.errFetch(err.message)}</div>`;
   }
 }
 
@@ -652,12 +771,13 @@ function esc(s) {
 }
 function formatDate(iso) {
   const d = new Date(iso);
-  return d.toLocaleDateString('ja-JP', { year:'numeric', month:'2-digit', day:'2-digit' })
-    + ' ' + d.toLocaleTimeString('ja-JP', { hour:'2-digit', minute:'2-digit' });
+  const locale = lang === 'en' ? 'en-US' : 'ja-JP';
+  return d.toLocaleDateString(locale, { year:'numeric', month:'2-digit', day:'2-digit' })
+       + ' ' + d.toLocaleTimeString(locale, { hour:'2-digit', minute:'2-digit' });
 }
 
 // ── INIT ──
-renderEvalItems();
+applyLang();
 </script>
 </body>
 </html>
